@@ -55,7 +55,7 @@ export const backendTools = {
         assetCode: `AST-${Date.now()}`,
         organizationId: await prisma.organization.findFirst().then(o => o!.id),
         createdById: await prisma.user.findFirst().then(u => u!.id),
-      }
+      } as any
     });
   },
 
@@ -117,7 +117,7 @@ export const backendTools = {
         workType: args.workType || 'REACTIVE',
         organizationId: await prisma.organization.findFirst().then(o => o!.id),
         createdById: await prisma.user.findFirst().then(u => u!.id),
-      },
+      } as any,
       include: { asset: true, assignedTechnician: true }
     });
   },
@@ -164,7 +164,7 @@ export const backendTools = {
         organizationId:  await prisma.organization.findFirst().then(o => o!.id),
         createdById:     await prisma.user.findFirst().then(u => u!.id),
         pmNumber:        `PM-${Date.now()}`,
-      },
+      } as any,
       include: { asset: true }
     });
   },
