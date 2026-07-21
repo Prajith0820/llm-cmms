@@ -1,19 +1,13 @@
 import prisma from '../prisma';
 
-// ─── Counter for WO Number generation ────────────────────────────────────────
 async function generateWONumber(): Promise<string> {
   const year  = new Date().getFullYear();
   const count = await prisma.workOrder.count();
   return `WO-${year}-${String(count + 1).padStart(3, '0')}`;
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// BACKEND TOOL LAYER — All database operations go through here.
-// The AI assistant ONLY calls these functions; never touches Prisma directly.
-// ═════════════════════════════════════════════════════════════════════════════
 export const backendTools = {
 
-  // ─── ASSET TOOLS ───────────────────────────────────────────────────────────
   getAssets: async (args?: { search?: string }) => {
     return prisma.asset.findMany({
       where: args?.search ? {
@@ -54,7 +48,15 @@ export const backendTools = {
     serialNumber?: string;
     description?: string;
   }) => {
-    return prisma.asset.create({ data: { ...args, status: 'ACTIVE' } });
+    return prisma.asset.create({
+      data: {
+        ...args,
+        status: 'ACTIVE',
+        assetCode: `AST-${Date.now()}`,
+        organizationId: await prisma.organization.findFirst().then(o => o!.id),
+        createdById: await prisma.user.findFirst().then(u => u!.id),
+      }
+    });
   },
 
   updateAsset: async (args: {
@@ -112,7 +114,9 @@ export const backendTools = {
         ...args,
         workOrderNumber: woNumber,
         status: 'OPEN',
-        workType: args.workType || 'REACTIVE'
+        workType: args.workType || 'REACTIVE',
+        organizationId: await prisma.organization.findFirst().then(o => o!.id),
+        createdById: await prisma.user.findFirst().then(u => u!.id),
       },
       include: { asset: true, assignedTechnician: true }
     });
@@ -133,7 +137,6 @@ export const backendTools = {
     });
   },
 
-  // ─── PREVENTIVE MAINTENANCE TOOLS ─────────────────────────────────────────
   getPMSchedules: async (args?: { assetId?: string }) => {
     return prisma.preventiveMaintenance.findMany({
       where: args?.assetId ? { assetId: args.assetId } : {},
@@ -160,12 +163,12 @@ export const backendTools = {
         assetId:         args.assetId,
         organizationId:  await prisma.organization.findFirst().then(o => o!.id),
         createdById:     await prisma.user.findFirst().then(u => u!.id),
+        pmNumber:        `PM-${Date.now()}`,
       },
       include: { asset: true }
     });
   },
 
-  // ─── INVENTORY TOOLS ───────────────────────────────────────────────────────
   getInventory: async () => {
     return prisma.sparePart.findMany({ orderBy: { partName: 'asc' } });
   },
@@ -225,7 +228,6 @@ export const backendTools = {
     return updated;
   },
 
-  // ─── USER TOOLS ────────────────────────────────────────────────────────────
   getTechnicians: async () => {
     return prisma.user.findMany({
       where:  { role: { name: 'TECHNICIAN' } },
@@ -233,7 +235,6 @@ export const backendTools = {
     });
   },
 
-  // ─── REPORT TOOLS ──────────────────────────────────────────────────────────
   generateReport: async (args: { type: 'monthly' | 'work-orders' }) => {
     const reportUrl = `/api/reports/${args.type}`;
     return {

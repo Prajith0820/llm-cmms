@@ -3,12 +3,16 @@ import prisma from '../prisma';
 
 const router = Router();
 
-// GET /api/preventive-maintenance
+async function generatePMNumber(): Promise<string> {
+  const count = await prisma.preventiveMaintenance.count();
+  return `PM-${String(count + 1).padStart(3, '0')}`;
+}
+
 router.get('/', async (_req: Request, res: Response) => {
   try {
     const schedules = await prisma.preventiveMaintenance.findMany({
-      include:  { asset: { select: { id: true, name: true, category: true } } },
-      orderBy:  { nextMaintenance: 'asc' }
+      include:  { asset: { select: { id: true, assetName: true, category: true } } },
+      orderBy:  { nextDueDate: 'asc' }
     });
     res.json(schedules);
   } catch {
@@ -16,7 +20,6 @@ router.get('/', async (_req: Request, res: Response) => {
   }
 });
 
-// GET /api/preventive-maintenance/:id
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const pm = await prisma.preventiveMaintenance.findUnique({
@@ -30,16 +33,23 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/preventive-maintenance
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const { title, description, frequencyDays, nextMaintenance, assetId } = req.body;
+    const { title, description, frequency, startDate, assetId, assignedTechnicianId } = req.body;
+    const pmNumber = await generatePMNumber();
+    const start = new Date(startDate);
     const pm = await prisma.preventiveMaintenance.create({
       data: {
-        title, description,
-        frequencyDays: Number(frequencyDays),
-        nextMaintenance: new Date(nextMaintenance),
-        assetId
+        pmNumber,
+        title,
+        description,
+        frequency,
+        startDate: start,
+        nextDueDate: start,
+        assetId,
+        assignedTechnicianId,
+        organizationId: await prisma.organization.findFirst().then(o => o!.id),
+        createdById: await prisma.user.findFirst().then(u => u!.id),
       },
       include: { asset: true }
     });
@@ -50,17 +60,16 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
-// PUT /api/preventive-maintenance/:id
 router.put('/:id', async (req: Request, res: Response) => {
   try {
-    const { title, description, frequencyDays, nextMaintenance, lastMaintenance } = req.body;
+    const { title, description, frequency, nextDueDate, lastMaintenance } = req.body;
     const pm = await prisma.preventiveMaintenance.update({
       where: { id: req.params.id },
       data: {
         title, description,
-        ...(frequencyDays    ? { frequencyDays: Number(frequencyDays) } : {}),
-        ...(nextMaintenance  ? { nextMaintenance: new Date(nextMaintenance) } : {}),
-        ...(lastMaintenance  ? { lastMaintenance: new Date(lastMaintenance) } : {})
+        ...(frequency ? { frequency } : {}),
+        ...(nextDueDate ? { nextDueDate: new Date(nextDueDate) } : {}),
+        ...(lastMaintenance ? { assetRestoredAt: new Date(lastMaintenance) } : {})
       }
     });
     res.json(pm);
@@ -69,7 +78,6 @@ router.put('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// DELETE /api/preventive-maintenance/:id
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
     await prisma.preventiveMaintenance.delete({ where: { id: req.params.id } });

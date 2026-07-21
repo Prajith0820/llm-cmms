@@ -4,7 +4,6 @@ import prisma from '../prisma';
 
 const router = Router();
 
-// POST /api/auth/login
 router.post('/login', async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
@@ -13,18 +12,18 @@ router.post('/login', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findFirst({ where: { email } });
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const passwordMatch = await bcrypt.compare(password, user.password);
+    const passwordMatch = await bcrypt.compare(password, user.passwordHash);
     if (!passwordMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const { password: _pw, ...safeUser } = user;
+    const { passwordHash: _pw, ...safeUser } = user;
     res.json({ user: safeUser });
   } catch (error) {
     console.error('Login error:', error);
