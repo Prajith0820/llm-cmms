@@ -1,19 +1,11 @@
-import OpenAI from 'openai';
+import { OpenRouter } from "@openrouter/sdk";
 import { backendTools, ToolName } from '../tools';
 import prisma from '../prisma';
 
-const openai = new OpenAI({
-  baseURL: 'https://openrouter.ai/api/v1',
-  apiKey:  process.env.OPENROUTER_API_KEY || 'dummy_key',
-  defaultHeaders: {
-    'HTTP-Referer': 'http://localhost:3000',
-    'X-Title': 'FixByte CMMS',
-  },
+const openrouter = new OpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY || 'dummy_key',
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SYSTEM PROMPT
-// ─────────────────────────────────────────────────────────────────────────────
 const BASE_SYSTEM_PROMPT = `You are FixByte, an intelligent AI Maintenance Assistant embedded in a Computerized Maintenance Management System (CMMS).
 
 ## YOUR ROLE
@@ -54,10 +46,7 @@ For creation tasks, gather info progressively:
 - getTechnicians: Use to list available technicians for assignment.
 - generateReport: Returns a download URL for the report.`;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// TOOL DEFINITIONS (OpenAI-compatible)
-// ─────────────────────────────────────────────────────────────────────────────
-const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
+const tools = [
   {
     type: 'function',
     function: {
@@ -225,9 +214,9 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
            assetId:       { type: 'string' }
          },
          required: ['title', 'frequency', 'startDate', 'assetId']
-      }
-    }
-  },
+       }
+     }
+   },
   {
     type: 'function',
     function: {
@@ -306,12 +295,8 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   }
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MAIN CHAT HANDLER
-// ─────────────────────────────────────────────────────────────────────────────
 export async function handleChat(messages: any[], context: any): Promise<string> {
   try {
-    // Fetch live technician list to include in context
     const technicians = await prisma.user.findMany({
       where:  { role: { name: 'TECHNICIAN' } },
       select: { id: true, fullName: true }
@@ -337,43 +322,36 @@ ${techList}
       ...messages
     ];
 
-    // ── Sanitizer: strip any leaked raw tool-call text from responses ───────
     const sanitizeResponse = (text: string): string => {
       const cleaned = text
-        // <function=toolName>...</function> with or without opening <
         .replace(/<?\bfunction=[a-zA-Z]+>[^]*?<\/function>/g, '')
-        // toolName{...} on its own line
         .replace(/^[a-zA-Z]+\{[\s\S]*?\}\s*$/gm, '')
-        // bare function= prefix leak: e.g. "function=getWorkOrders> </function>"
         .replace(/\bfunction=[a-zA-Z]+>[\s\S]*?<\/function>/g, '')
-        // ```code blocks```
         .replace(/```[\s\S]*?```/g, '')
-        // any remaining <function ...> tags
         .replace(/<\/?function[^>]*>/g, '')
         .trim();
       return cleaned || 'Operation completed successfully.';
     };
 
-    // ── First LLM call ──────────────────────────────────────────────────────
-    const firstResponse = await openai.chat.completions.create({
-      model:       'openai/gpt-oss-20b:free',
-      messages:    apiMessages,
-      tools,
-      tool_choice: 'auto',
-      max_tokens:  1024,
-    } as any);
+    const firstResponse = await openrouter.chat.send({
+      chatRequest: {
+        model: 'google/gemma-4-26b-a4b-it:free',
+        messages: apiMessages,
+        tools: tools as any,
+        toolChoice: 'auto',
+        maxTokens: 1024,
+      }
+    });
 
-    const firstMessage = firstResponse.choices[0].message;
+    const firstMessage = (firstResponse as any).choices[0].message;
 
-    // ── No tool calls → return text directly ───────────────────────────────
-    if (!firstMessage.tool_calls || firstMessage.tool_calls.length === 0) {
+    if (!firstMessage.toolCalls || firstMessage.toolCalls.length === 0) {
       return sanitizeResponse(firstMessage.content || 'I am not sure how to help with that.');
     }
 
-    // ── Execute tool calls ─────────────────────────────────────────────────
     apiMessages.push(firstMessage);
 
-    for (const toolCall of firstMessage.tool_calls) {
+    for (const toolCall of firstMessage.toolCalls) {
       const fnName = toolCall.function.name as ToolName;
       const args   = JSON.parse(toolCall.function.arguments || '{}');
 
@@ -382,7 +360,6 @@ ${techList}
       let result: any;
       try {
         if (backendTools[fnName]) {
-          // @ts-ignore — dynamic dispatch
           result = await backendTools[fnName](args);
         } else {
           result = { error: `Tool "${fnName}" not found` };
@@ -401,14 +378,15 @@ ${techList}
       });
     }
 
-    // ── Second LLM call to compose final response ──────────────────────────
-    const secondResponse = await openai.chat.completions.create({
-      model:     'openai/gpt-oss-20b:free',
-      messages:  apiMessages,
-      max_tokens: 1024,
-    } as any);
+    const secondResponse = await openrouter.chat.send({
+      chatRequest: {
+        model: 'google/gemma-4-26b-a4b-it:free',
+        messages: apiMessages,
+        maxTokens: 1024,
+      }
+    });
 
-    return sanitizeResponse(secondResponse.choices[0].message.content
+    return sanitizeResponse((secondResponse as any).choices[0].message.content
       || 'Operation completed successfully.');
 
   } catch (error: any) {
