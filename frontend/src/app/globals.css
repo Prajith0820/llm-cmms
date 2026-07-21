@@ -1,0 +1,33 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; }
+
+:root {
+  --color-bg: #0d0f14;
+  --color-surface: #14171f;
+  --color-surface-2: #1c2030;
+  --color-border: #252836;
+  --color-accent: #6c63ff;
+  --color-accent-light: #8b83ff;
+  --color-text: #e8eaf0;
+  --color-muted: #7a7f9a;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* Mantine dark overrides */
+[data-mantine-color-scheme='dark'] {
+  --mantine-color-body: #0d0f14;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--color-surface); }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-accent); }
