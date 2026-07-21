@@ -395,6 +395,9 @@ ${techList}
     if (error?.status === 401 || error?.message?.includes('api_key')) {
       return '⚠️ Invalid API key. Please check your OPENROUTER_API_KEY in the backend .env file.';
     }
+    if (error?.status === 429 || error?.message?.includes('Rate limit')) {
+      return '⚠️ AI rate limit exceeded. Free models are limited to 50 requests/day. Please add credits to OpenRouter or try again later.';
+    }
     if (error?.status === 503 || error?.message?.includes('model')) {
       return '⚠️ AI model is currently loading. Please try again in a moment.';
     }
