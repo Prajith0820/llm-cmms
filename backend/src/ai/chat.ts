@@ -16,7 +16,7 @@ Help maintenance teams manage assets, work orders, preventive maintenance schedu
 - If asked about the website, explain that FixByte is a Computerized Maintenance Management System (CMMS) used to track assets, work orders, inventory, and preventive maintenance.
 
 ## CRITICAL RULES
-1. NEVER fabricate IDs, work order numbers, or confirmation data. Only report what tools actually return.
+1. Use the provided tools only. Request ALL required fields before executing a tool Do not invent IDs or data.
 2. Collect ALL required fields before calling any tool. Ask questions one at a time.
 3. Use the APP CONTEXT provided (current page, asset details, logged-in user) to auto-fill fields when possible.
 4. If the user says "this asset", "current asset", "this pump" etc., use the assetId from the APP CONTEXT.
@@ -333,6 +333,50 @@ ${techList}
       return cleaned || 'Operation completed successfully.';
     };
 
+    const extractRawToolCalls = (text: string): { name: string; raw: string }[] | null => {
+      const calls: { name: string; raw: string }[] = [];
+      const regex = /<\|tool_call\|>([\s\S]*?)<\|tool_call\|>/g;
+      let match: RegExpExecArray | null;
+      while ((match = regex.exec(text)) !== null) {
+        const raw = match[1].trim();
+        const nameMatch = raw.match(/^([a-zA-Z0-9_]+)/);
+        if (nameMatch) {
+          calls.push({ name: nameMatch[1], raw });
+        }
+      }
+      return calls.length ? calls : null;
+    };
+
+    const executeRawToolCalls = async (text: string): Promise<string> => {
+      const calls = extractRawToolCalls(text);
+      if (!calls) return sanitizeResponse(text);
+
+      let resultText = text;
+      for (const call of calls) {
+        const fnName = call.name as ToolName;
+        console.log(`🔧 Raw tool text → Tool: ${fnName}`);
+
+        let result: any;
+        try {
+          if (backendTools[fnName]) {
+            const argsMatch = call.raw.match(new RegExp(`^${fnName}\\s*\\{\\s*(.*)\\s*\\}$`, 's'));
+            const args = argsMatch ? JSON.parse(`{${argsMatch[1]}}`) : {};
+            result = await backendTools[fnName](args);
+          } else {
+            result = { error: `Tool "${fnName}" not found` };
+          }
+        } catch (err: any) {
+          console.error(`❌ Tool error [${fnName}]:`, err.message);
+          result = { error: err.message || 'Tool execution failed' };
+        }
+
+        console.log(`✅ Tool result [${fnName}]:`, JSON.stringify(result).slice(0, 200));
+        resultText = resultText.replace(call.raw, JSON.stringify(result));
+      }
+
+      return sanitizeResponse(resultText);
+    };
+
     const firstResponse = await openrouter.chat.send({
       chatRequest: {
         model:       'openai/gpt-oss-20b:free',
@@ -346,6 +390,11 @@ ${techList}
     const firstMessage = (firstResponse as any).choices[0].message;
 
     if (!firstMessage.tool_calls || firstMessage.tool_calls.length === 0) {
+      const rawCalls = extractRawToolCalls(firstMessage.content || '');
+      if (rawCalls && rawCalls.length > 0) {
+        const followUp = await executeRawToolCalls(firstMessage.content || '');
+        return followUp;
+      }
       return sanitizeResponse(firstMessage.content || 'I am not sure how to help with that.');
     }
 
@@ -386,8 +435,12 @@ ${techList}
       } as any
     });
 
-    return sanitizeResponse((secondResponse as any).choices[0].message.content
-      || 'Operation completed successfully.');
+    const secondContent = (secondResponse as any).choices[0].message.content || 'Operation completed successfully.';
+    const rawCalls = extractRawToolCalls(secondContent);
+    if (rawCalls && rawCalls.length > 0) {
+      return await executeRawToolCalls(secondContent);
+    }
+    return sanitizeResponse(secondContent);
 
   } catch (error: any) {
     console.error('AI Chat error:', error);
