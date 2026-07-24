@@ -1,14 +1,9 @@
-import OpenAI from 'openai';
+import { OpenRouter } from "@openrouter/sdk";
 import { backendTools, ToolName } from '../tools';
 import prisma from '../prisma';
 
-const openai = new OpenAI({
-  baseURL: 'https://openrouter.ai/api/v1',
-  apiKey:  process.env.OPENROUTER_API_KEY || 'dummy_key',
-  defaultHeaders: {
-    'HTTP-Referer': 'http://localhost:3000',
-    'X-Title': 'FixByte CMMS',
-  },
+const openrouter = new OpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY || 'dummy_key',
 });
 
 const BASE_SYSTEM_PROMPT = `You are FixByte, an intelligent AI Maintenance Assistant embedded in a Computerized Maintenance Management System (CMMS).
@@ -338,15 +333,17 @@ ${techList}
       return cleaned || 'Operation completed successfully.';
     };
 
-    const firstResponse = await openai.chat.completions.create({
-      model:       'google/gemma-4-26b-a4b-it:free',
-      messages:    apiMessages,
-      tools,
-      tool_choice: 'auto',
-      max_tokens:  1024,
-    } as any);
+    const firstResponse = await openrouter.chat.send({
+      chatRequest: {
+        model:       'openai/gpt-oss-20b:free',
+        messages:    apiMessages,
+        tools:       tools as any,
+        toolChoice:  'auto',
+        maxTokens:   1024,
+      } as any
+    });
 
-    const firstMessage = firstResponse.choices[0].message;
+    const firstMessage = (firstResponse as any).choices[0].message;
 
     if (!firstMessage.tool_calls || firstMessage.tool_calls.length === 0) {
       return sanitizeResponse(firstMessage.content || 'I am not sure how to help with that.');
@@ -381,13 +378,15 @@ ${techList}
       });
     }
 
-    const secondResponse = await openai.chat.completions.create({
-      model:     'google/gemma-4-26b-a4b-it:free',
-      messages:  apiMessages,
-      max_tokens: 1024,
-    } as any);
+    const secondResponse = await openrouter.chat.send({
+      chatRequest: {
+        model:     'openai/gpt-oss-20b:free',
+        messages:  apiMessages,
+        maxTokens: 1024,
+      } as any
+    });
 
-    return sanitizeResponse(secondResponse.choices[0].message.content
+    return sanitizeResponse((secondResponse as any).choices[0].message.content
       || 'Operation completed successfully.');
 
   } catch (error: any) {
