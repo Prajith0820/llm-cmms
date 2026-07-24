@@ -1,9 +1,14 @@
-import { OpenRouter } from "@openrouter/sdk";
+import OpenAI from 'openai';
 import { backendTools, ToolName } from '../tools';
 import prisma from '../prisma';
 
-const openrouter = new OpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY || 'dummy_key',
+const openai = new OpenAI({
+  baseURL: 'https://openrouter.ai/api/v1',
+  apiKey:  process.env.OPENROUTER_API_KEY || 'dummy_key',
+  defaultHeaders: {
+    'HTTP-Referer': 'http://localhost:3000',
+    'X-Title': 'FixByte CMMS',
+  },
 });
 
 const BASE_SYSTEM_PROMPT = `You are FixByte, an intelligent AI Maintenance Assistant embedded in a Computerized Maintenance Management System (CMMS).
@@ -377,18 +382,15 @@ ${techList}
       return sanitizeResponse(resultText);
     };
 
-    const firstResponse = await openrouter.chat.send({
-      chatRequest: {
-        model:       'openai/gpt-oss-20b:free',
-        messages:    apiMessages,
-        tools:       tools as any,
-        toolChoice:  'auto',
-        maxTokens:   1024,
-        stream:      false,
-      } as any
-    });
+    const firstResponse = await openai.chat.completions.create({
+      model:       'openai/gpt-oss-20b:free',
+      messages:    apiMessages,
+      tools,
+      tool_choice: 'auto',
+      max_tokens:  1024,
+    } as any);
 
-    const firstMessage = (firstResponse as any).choices[0].message;
+    const firstMessage = firstResponse.choices[0].message;
 
     if (!firstMessage.tool_calls || firstMessage.tool_calls.length === 0) {
       const rawCalls = extractRawToolCalls(firstMessage.content || '');
@@ -428,18 +430,15 @@ ${techList}
       });
     }
 
-    const secondResponse = await openrouter.chat.send({
-      chatRequest: {
-        model:     'openai/gpt-oss-20b:free',
-        messages:  apiMessages,
-        maxTokens: 1024,
-        stream:    false,
-      } as any
-    });
+    const secondResponse = await openai.chat.completions.create({
+      model:     'openai/gpt-oss-20b:free',
+      messages:  apiMessages,
+      max_tokens: 1024,
+    } as any);
 
     const secondContent = (secondResponse as any).choices[0].message.content || 'Operation completed successfully.';
-    const rawCalls = extractRawToolCalls(secondContent);
-    if (rawCalls && rawCalls.length > 0) {
+    const secondRawCalls = extractRawToolCalls(secondContent);
+    if (secondRawCalls && secondRawCalls.length > 0) {
       return await executeRawToolCalls(secondContent);
     }
     return sanitizeResponse(secondContent);
