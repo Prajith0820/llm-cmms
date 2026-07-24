@@ -16,9 +16,19 @@ export const login = (email: string, password: string) =>
 // ─── ASSETS ───────────────────────────────────────────────────────────────────
 export const getAssets = ()     => api.get('/assets');
 export const getAsset  = (id: string) => api.get(`/assets/${id}`);
-export const createAsset = (data: any)         => api.post('/assets', data);
+export const createAsset = (data: any) => {
+  const mapped = {
+    assetName: data.name || data.assetName,
+    category: data.category,
+    location: data.location,
+    manufacturer: data.manufacturer,
+    serialNumber: data.serialNumber,
+    description: data.description,
+  };
+  return api.post('/assets', mapped);
+};
 export const updateAsset = (id: string, data: any) => api.put(`/assets/${id}`, data);
-export const deleteAsset = (id: string)        => api.delete(`/assets/${id}`);
+export const deleteAsset = (id: string) => api.delete(`/assets/${id}`);
 
 // ─── WORK ORDERS ──────────────────────────────────────────────────────────────
 export const getWorkOrders  = ()              => api.get('/work-orders');
@@ -34,9 +44,21 @@ export const deletePMSchedule= (id: string)   => api.delete(`/preventive-mainten
 
 // ─── INVENTORY ────────────────────────────────────────────────────────────────
 export const getInventory   = ()              => api.get('/inventory');
-export const createInventory= (data: any)     => api.post('/inventory', data);
-export const issueInventory = (data: any)     => api.post('/inventory/issue', data);
-export const receiveInventory=(data: any)     => api.post('/inventory/receive', data);
+export const createInventory= (data: any)     => {
+  const mapped = {
+    partName: data.name || data.partName,
+    description: data.description,
+    unit: data.unit || 'PCS',
+    minimumStock: data.minQuantity ?? data.minimumStock ?? 0,
+    maximumStock: data.maxQuantity ?? data.maximumStock ?? 0,
+    unitCost: data.unitCost ?? 0,
+    categoryId: data.categoryId || null,
+    warehouseId: data.warehouseId || null,
+  };
+  return api.post('/inventory', mapped);
+};
+export const issueInventory = (data: any)     => api.post('/inventory/issue', { sparePartId: data.inventoryId, quantity: data.quantity, notes: data.notes });
+export const receiveInventory=(data: any)     => api.post('/inventory/receive', { sparePartId: data.inventoryId, quantity: data.quantity, notes: data.notes });
 
 // ─── USERS ────────────────────────────────────────────────────────────────────
 export const getTechnicians = () => api.get('/users/technicians');

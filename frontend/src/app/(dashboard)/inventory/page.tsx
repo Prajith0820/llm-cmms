@@ -45,15 +45,15 @@ export default function InventoryPage() {
   const items = res?.data || [];
 
   const filteredItems = items.filter((item: any) => {
-    return item.name.toLowerCase().includes(search.toLowerCase()) ||
+    return item.partName.toLowerCase().includes(search.toLowerCase()) ||
       (item.description && item.description.toLowerCase().includes(search.toLowerCase()));
   });
 
   function openActionModal(item: any, action: 'issue' | 'receive') {
     setSelectedItem({
       id: item.id,
-      name: item.name,
-      quantity: item.quantity,
+      name: item.partName,
+      quantity: item.currentStock,
       unit: item.unit,
       action,
     });
@@ -119,16 +119,16 @@ export default function InventoryPage() {
             </Table.Thead>
             <Table.Tbody>
               {filteredItems.map((item: any) => {
-                const isLowStock = item.quantity <= item.minQuantity;
+                const isLowStock = item.currentStock <= item.minimumStock;
                 return (
                   <Table.Tr key={item.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                    <Table.Td fw={600}>{item.name}</Table.Td>
+                    <Table.Td fw={600}>{item.partName}</Table.Td>
                     <Table.Td>{item.description || '—'}</Table.Td>
                     <Table.Td fw={700}>
-                      {item.quantity} {item.unit}
+                      {item.currentStock} {item.unit}
                     </Table.Td>
                     <Table.Td c="dimmed">
-                      {item.minQuantity} {item.unit}
+                      {item.minimumStock} {item.unit}
                     </Table.Td>
                     <Table.Td>
                       {isLowStock ? (
@@ -153,7 +153,7 @@ export default function InventoryPage() {
                           color="orange"
                           size="xs"
                           leftSection={<IconArrowUpRight size={14} />}
-                          disabled={item.quantity <= 0}
+                          disabled={item.currentStock <= 0}
                           onClick={() => openActionModal(item, 'issue')}
                         >
                           Issue

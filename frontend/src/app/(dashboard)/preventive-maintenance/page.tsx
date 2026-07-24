@@ -35,12 +35,19 @@ export default function PreventiveMaintenancePage() {
 
   const completeMaintenanceMutation = useMutation({
     mutationFn: (pm: any) => {
-      // Calculate next due date based on frequencyDays
+      // Calculate next due date based on frequency
       const nextDate = new Date();
-      nextDate.setDate(nextDate.getDate() + pm.frequencyDays);
+      if (pm.frequency === 'DAILY') nextDate.setDate(nextDate.getDate() + 1);
+      else if (pm.frequency === 'WEEKLY') nextDate.setDate(nextDate.getDate() + 7);
+      else if (pm.frequency === 'MONTHLY') nextDate.setDate(nextDate.getDate() + 30);
+      else if (pm.frequency === 'QUARTERLY') nextDate.setDate(nextDate.getDate() + 90);
+      else if (pm.frequency === 'HALF_YEARLY') nextDate.setDate(nextDate.getDate() + 182);
+      else if (pm.frequency === 'YEARLY') nextDate.setDate(nextDate.getDate() + 365);
+      else nextDate.setDate(nextDate.getDate() + 30);
+
       return updatePMSchedule(pm.id, {
-        lastMaintenance: new Date().toISOString(),
-        nextMaintenance: nextDate.toISOString()
+        assetRestoredAt: new Date().toISOString(),
+        nextDueDate: nextDate.toISOString()
       });
     },
     onSuccess: () => {
@@ -56,7 +63,7 @@ export default function PreventiveMaintenancePage() {
 
   const filteredSchedules = schedules.filter((pm: any) => {
     return pm.title.toLowerCase().includes(search.toLowerCase()) ||
-      (pm.asset?.name && pm.asset.name.toLowerCase().includes(search.toLowerCase()));
+      (pm.asset?.assetName && pm.asset.assetName.toLowerCase().includes(search.toLowerCase()));
   });
 
   function getPMStatusBadge(nextMaintenanceStr: string) {
@@ -133,11 +140,11 @@ export default function PreventiveMaintenancePage() {
               {filteredSchedules.map((pm: any) => (
                 <Table.Tr key={pm.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
                   <Table.Td fw={600}>{pm.title}</Table.Td>
-                  <Table.Td fw={600} c="violet.4">{pm.asset?.name}</Table.Td>
-                  <Table.Td>Every {pm.frequencyDays} days</Table.Td>
-                  <Table.Td>{pm.lastMaintenance ? new Date(pm.lastMaintenance).toLocaleDateString() : 'Never'}</Table.Td>
-                  <Table.Td fw={600}>{new Date(pm.nextMaintenance).toLocaleDateString()}</Table.Td>
-                  <Table.Td>{getPMStatusBadge(pm.nextMaintenance)}</Table.Td>
+                  <Table.Td fw={600} c="violet.4">{pm.asset?.assetName}</Table.Td>
+                  <Table.Td>{pm.frequency}</Table.Td>
+                  <Table.Td>{pm.assetRestoredAt ? new Date(pm.assetRestoredAt).toLocaleDateString() : 'Never'}</Table.Td>
+                  <Table.Td fw={600}>{new Date(pm.nextDueDate).toLocaleDateString()}</Table.Td>
+                    <Table.Td>{getPMStatusBadge(pm.nextDueDate)}</Table.Td>
                   <Table.Td style={{ textAlign: 'right' }}>
                     <Menu position="bottom-end" shadow="md">
                       <Menu.Target>

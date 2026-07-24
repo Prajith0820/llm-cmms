@@ -15,7 +15,7 @@ interface Props {
 }
 
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
-const TYPES = ['CORRECTIVE', 'PREVENTIVE', 'INSPECTION'];
+const TYPES = ['REACTIVE', 'PREVENTIVE', 'BREAKDOWN', 'INSPECTION'];
 
 export default function CreateWorkOrderModal({ opened, onClose, preselectedAssetId }: Props) {
   const qc = useQueryClient();
@@ -23,9 +23,9 @@ export default function CreateWorkOrderModal({ opened, onClose, preselectedAsset
     title: '',
     description: '',
     priority: 'MEDIUM',
-    type: 'CORRECTIVE',
+    workType: 'REACTIVE',
     assetId: '',
-    assignedToId: '',
+    assignedTechnicianId: '',
   });
 
   const { data: assets } = useQuery({
@@ -43,7 +43,7 @@ export default function CreateWorkOrderModal({ opened, onClose, preselectedAsset
       const payload = {
         ...form,
         assetId: preselectedAssetId || form.assetId,
-        assignedToId: form.assignedToId || null,
+        assignedTechnicianId: form.assignedTechnicianId || null,
       };
       return createWorkOrder(payload);
     },
@@ -55,9 +55,9 @@ export default function CreateWorkOrderModal({ opened, onClose, preselectedAsset
         title: '',
         description: '',
         priority: 'MEDIUM',
-        type: 'CORRECTIVE',
+        workType: 'REACTIVE',
         assetId: '',
-        assignedToId: '',
+        assignedTechnicianId: '',
       });
       onClose();
     },
@@ -70,8 +70,8 @@ export default function CreateWorkOrderModal({ opened, onClose, preselectedAsset
     setForm((p) => ({ ...p, [key]: val }));
   }
 
-  const assetOptions = assets?.data.map((a: any) => ({ value: a.id, label: a.name })) || [];
-  const techOptions = technicians?.data.map((t: any) => ({ value: t.id, label: t.name })) || [];
+  const assetOptions = assets?.data.map((a: any) => ({ value: a.id, label: a.assetName })) || [];
+  const techOptions = technicians?.data.map((t: any) => ({ value: t.id, label: t.fullName })) || [];
 
   const inputStyles = {
     input: { background: 'var(--color-surface-2)', border: '1px solid var(--color-border)' },
@@ -127,8 +127,8 @@ export default function CreateWorkOrderModal({ opened, onClose, preselectedAsset
             label="Type *"
             placeholder="Select type"
             data={TYPES}
-            value={form.type}
-            onChange={(v) => set('type', v || 'CORRECTIVE')}
+            value={form.workType}
+            onChange={(v) => set('workType', v || 'REACTIVE')}
             required
             styles={inputStyles}
           />
@@ -138,8 +138,8 @@ export default function CreateWorkOrderModal({ opened, onClose, preselectedAsset
           label="Assign Technician"
           placeholder="Select technician (optional)"
           data={techOptions}
-          value={form.assignedToId}
-          onChange={(v) => set('assignedToId', v || '')}
+          value={form.assignedTechnicianId}
+          onChange={(v) => set('assignedTechnicianId', v || '')}
           clearable
           styles={inputStyles}
         />

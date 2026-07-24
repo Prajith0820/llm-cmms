@@ -15,7 +15,7 @@ import PriorityBadge from '@/components/PriorityBadge';
 import { notifications } from '@mantine/notifications';
 
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
-const STATUSES = ['OPEN', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
+const STATUSES = ['OPEN', 'IN_PROGRESS', 'COMPLETED', 'CLOSED', 'ASSIGNED'];
 
 export default function WorkOrdersPage() {
   const qc = useQueryClient();
@@ -61,8 +61,8 @@ export default function WorkOrdersPage() {
 
   const filteredWOs = workOrders.filter((wo: any) => {
     const matchesSearch = wo.title.toLowerCase().includes(search.toLowerCase()) ||
-      wo.woNumber.toLowerCase().includes(search.toLowerCase()) ||
-      (wo.asset?.name && wo.asset.name.toLowerCase().includes(search.toLowerCase()));
+      wo.workOrderNumber.toLowerCase().includes(search.toLowerCase()) ||
+      (wo.asset?.assetName && wo.asset.assetName.toLowerCase().includes(search.toLowerCase()));
 
     const matchesPriority = !priorityFilter || wo.priority === priorityFilter;
     const matchesStatus = !statusFilter || wo.status === statusFilter;
@@ -145,13 +145,13 @@ export default function WorkOrdersPage() {
             <Table.Tbody>
               {filteredWOs.map((wo: any) => (
                 <Table.Tr key={wo.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                  <Table.Td fw={700} c="violet.4">{wo.woNumber}</Table.Td>
+                  <Table.Td fw={700} c="violet.4">{wo.workOrderNumber}</Table.Td>
                   <Table.Td>{wo.title}</Table.Td>
-                  <Table.Td fw={600}>{wo.asset?.name}</Table.Td>
-                  <Table.Td>{wo.assignedTo?.name || 'Unassigned'}</Table.Td>
+                  <Table.Td fw={600}>{wo.asset?.assetName}</Table.Td>
+                  <Table.Td>{wo.assignedTechnician?.fullName || 'Unassigned'}</Table.Td>
                   <Table.Td><PriorityBadge priority={wo.priority} /></Table.Td>
                   <Table.Td>
-                    <Badge variant="outline" size="xs" color="gray">{wo.type}</Badge>
+                    <Badge variant="outline" size="xs" color="gray">{wo.workType}</Badge>
                   </Table.Td>
                   <Table.Td><StatusBadge status={wo.status} /></Table.Td>
                   <Table.Td style={{ textAlign: 'right' }}>
@@ -175,7 +175,7 @@ export default function WorkOrdersPage() {
                           <Menu.Item
                             key={t.id}
                             leftSection={<IconUser size={12} />}
-                            onClick={() => updateMutation.mutate({ id: wo.id, data: { assignedToId: t.id, status: 'IN_PROGRESS' } })}
+                            onClick={() => updateMutation.mutate({ id: wo.id, data: { assignedTechnicianId: t.id, status: 'IN_PROGRESS' } })}
                           >
                             {t.name}
                           </Menu.Item>

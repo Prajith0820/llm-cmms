@@ -36,16 +36,16 @@ export default function DashboardPage() {
   
   // PM Overdue (next maintenance is in the past)
   const today = new Date();
-  const overduePMs = pmSchedules.filter((p: any) => new Date(p.nextMaintenance) < today).length;
+  const overduePMs = pmSchedules.filter((p: any) => new Date(p.nextDueDate) < today).length;
 
   // Low stock
-  const lowStock = inventory.filter((i: any) => i.quantity <= i.minQuantity).length;
+  const lowStock = inventory.filter((i: any) => i.currentStock <= i.minimumStock).length;
 
   // Work Orders breakdown
   const statusCounts = workOrders.reduce((acc: any, cur: any) => {
     acc[cur.status] = (acc[cur.status] || 0) + 1;
     return acc;
-  }, { OPEN: 0, IN_PROGRESS: 0, COMPLETED: 0, CANCELLED: 0 });
+  }, { OPEN: 0, IN_PROGRESS: 0, COMPLETED: 0, CLOSED: 0 });
 
   const totalWOs = workOrders.length || 1;
   const openPct = Math.round((statusCounts.OPEN / totalWOs) * 100);
@@ -184,7 +184,7 @@ export default function DashboardPage() {
                     <Table.Tr key={wo.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
                       <Table.Td fw={700} c="violet.4">{wo.woNumber}</Table.Td>
                       <Table.Td>{wo.title}</Table.Td>
-                      <Table.Td>{wo.asset?.name}</Table.Td>
+                       <Table.Td>{wo.asset?.assetName}</Table.Td>
                       <Table.Td><PriorityBadge priority={wo.priority} /></Table.Td>
                       <Table.Td><StatusBadge status={wo.status} /></Table.Td>
                     </Table.Tr>

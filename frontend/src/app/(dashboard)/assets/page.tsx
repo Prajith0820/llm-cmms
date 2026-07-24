@@ -26,7 +26,7 @@ export default function AssetsPage() {
 
   // Filter items
   const filteredAssets = assets.filter((asset: any) => {
-    const matchesSearch = asset.name.toLowerCase().includes(search.toLowerCase()) ||
+    const matchesSearch = asset.assetName.toLowerCase().includes(search.toLowerCase()) ||
       (asset.location && asset.location.toLowerCase().includes(search.toLowerCase())) ||
       (asset.serialNumber && asset.serialNumber.toLowerCase().includes(search.toLowerCase()));
     
@@ -114,7 +114,7 @@ export default function AssetsPage() {
                   style={{ borderBottom: '1px solid var(--color-border)', cursor: 'pointer' }}
                   onClick={() => router.push(`/assets/${asset.id}`)}
                 >
-                  <Table.Td fw={600} c="var(--color-text)">{asset.name}</Table.Td>
+                  <Table.Td fw={600} c="var(--color-text)">{asset.assetName}</Table.Td>
                   <Table.Td>
                     <Badge variant="outline" color="violet" size="sm">{asset.category}</Badge>
                   </Table.Td>
