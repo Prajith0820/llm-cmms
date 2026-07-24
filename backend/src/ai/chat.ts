@@ -384,6 +384,7 @@ ${techList}
         tools:       tools as any,
         toolChoice:  'auto',
         maxTokens:   1024,
+        stream:      false,
       } as any
     });
 
@@ -432,6 +433,7 @@ ${techList}
         model:     'openai/gpt-oss-20b:free',
         messages:  apiMessages,
         maxTokens: 1024,
+        stream:    false,
       } as any
     });
 

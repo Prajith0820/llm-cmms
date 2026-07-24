@@ -85,7 +85,7 @@ export default function ChatPage() {
         ...prev,
         {
           role: 'assistant',
-          content: '⚠️ Sorry, I could not complete your request. Please ensure HF_TOKEN is correctly set in backend .env and that the database is running.'
+          content: '⚠️ Sorry, I could not complete your request. Please ensure OPENROUTER_API_KEY is correctly set in backend .env and CORS allows this frontend origin.'
         }
       ]);
     } finally {
